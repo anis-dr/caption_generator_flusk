@@ -9,3 +9,4 @@ tensorflow-cpu==2.7.0
 keras==2.7.0
 numpy==1.19.2
 pillow~=8.4.0
+waitress==2.0.0

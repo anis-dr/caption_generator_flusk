@@ -8,6 +8,7 @@ from flask import Flask, request, flash, jsonify
 from keras.applications.xception import Xception
 from keras.models import load_model
 from keras.preprocessing.sequence import pad_sequences
+from waitress import serve
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -129,6 +130,6 @@ def generate_desc(model, tokenizer, photo, max_length):
     return in_text
 
 
-
 if __name__ == '__main__':
-    app.run(debug=True, port=os.getenv("PORT", default=5000))
+    # app.run(debug=True, port=os.getenv("PORT", default=5000))
+    serve(app, host='0.0.0.0', port=os.getenv("PORT", default=5000))

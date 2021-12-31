@@ -21,66 +21,68 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/predict', methods=['POST'])
+def predict():
+    # check if the post request has the file part
+    if 'file' not in request.files:
+        msg = 'No file part'
+        flash(msg)
+        return jsonify(msg), 400
+
+    file = request.files['file']
+    # if user does not select file, browser also
+    # submit an empty part without filename
+    if file.filename == '':
+        msg = 'No selected file'
+        flash(msg)
+        return jsonify({
+            'status': 'error',
+            'message': msg
+        }), 400
+
+    if not file or not allowed_file(file.filename):
+        msg = 'Allowed image types are -> jpg, jpeg'
+        flash(msg)
+        return jsonify({
+            'status': 'error',
+            'message': msg
+        }), 400
+    else:
+        try:
+            filename = secure_filename(file.filename)
+            print('upload_image filename: ' + filename)
+            msg = 'Image successfully uploaded'
+            flash(msg)
+
+            max_length = 32
+            cur_dir = os.getcwd()
+            tokenizer = load(open(os.path.join(cur_dir, "tokenizer.p"), "rb"))
+            model = load_model(os.path.join(cur_dir, "model_10.h5"))
+            xception_model = Xception(include_top=False, pooling="avg")
+
+            photo = extract_features(file.stream.read(), xception_model)
+
+            description = generate_desc(model, tokenizer, photo, max_length)
+            return jsonify({
+                'status': 'success',
+                'message': msg,
+                'description': description
+            }), 200
+        except Exception as e:
+            print(e)
+            return jsonify({
+                'status': 'error',
+                'message': 'Internal error'
+            }), 500
+
+
+@app.route('/', methods=['GET'])
 def upload_file():
-    if request.method == 'POST':
-        # check if the post request has the file part
-        if 'file' not in request.files:
-            msg = 'No file part'
-            flash(msg)
-            return jsonify(msg), 400
-
-        file = request.files['file']
-        # if user does not select file, browser also
-        # submit an empty part without filename
-        if file.filename == '':
-            msg = 'No selected file'
-            flash(msg)
-            return jsonify({
-                'status': 'error',
-                'message': msg
-            }), 400
-
-        if not file or not allowed_file(file.filename):
-            msg = 'Allowed image types are -> jpg, jpeg'
-            flash(msg)
-            return jsonify({
-                'status': 'error',
-                'message': msg
-            }), 400
-        else:
-            try:
-                filename = secure_filename(file.filename)
-                print('upload_image filename: ' + filename)
-                msg = 'Image successfully uploaded'
-                flash(msg)
-
-                max_length = 32
-                cur_dir = os.getcwd()
-                tokenizer = load(open(os.path.join(cur_dir, "tokenizer.p"), "rb"))
-                model = load_model(os.path.join(cur_dir, "model_10.h5"))
-                xception_model = Xception(include_top=False, pooling="avg")
-
-                photo = extract_features(file.stream.read(), xception_model)
-
-                description = generate_desc(model, tokenizer, photo, max_length)
-                return jsonify({
-                    'status': 'success',
-                    'message': msg,
-                    'description': description
-                }), 200
-            except Exception as e:
-                print(e)
-                return jsonify({
-                    'status': 'error',
-                    'message': 'Internal error'
-                }), 500
-
     return '''
     <!doctype html>
     <title>Upload new File</title>
     <h1>Upload new File</h1>
-    <form method=post enctype=multipart/form-data>
+    <form action="/predict" method=post enctype=multipart/form-data>
       <input type=file name=file>
       <input type=submit value=Upload>
     </form>
